@@ -436,34 +436,49 @@
             document.getElementById('room-screen').classList.remove('hidden');
         }
 
-        function createRoom() {
-            syllableFormat = document.getElementById('syllable-format').value;
-            artStyle = document.getElementById('art-style').value;
-            
-            fetch(`${API_BASE}/api/create-room`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ format: syllableFormat, artStyle: artStyle })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (!data || !data.roomCode) throw new Error("Invalid API response");
+function createRoom() {
+    syllableFormat = document.getElementById('syllable-format').value;
+    artStyle = document.getElementById('art-style').value;
 
-                currentRoom = data.roomCode;
-                participantId = data.participantId;
-
-                document.getElementById('current-room-code').textContent = currentRoom;
-                document.getElementById('share-room-code').textContent = currentRoom;
-                document.getElementById('current-format').textContent = syllableFormat;
-                document.getElementById('current-art-style').textContent = artStyleDescriptions[artStyle];
-
-                showRoom();
-            })
-            .catch(error => {
-                console.error('Error creating room:', error);
-                alert('Failed to create room. Please try again.');
-            });
+    fetch(`${API_BASE}/api/create-room`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ format: syllableFormat, artStyle: artStyle })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
         }
+        return response.json();
+    })
+    .then(data => {
+        console.log("Create room response:", data);
+
+        // accept several possible keys
+        const roomCode =
+            data.roomCode || data.room_code || data.code || data.room || data.id;
+        const pid =
+            data.participantId || data.participant_id || data.participant || data.clientId;
+
+        if (!roomCode) {
+            throw new Error("No room code in API response");
+        }
+
+        currentRoom = roomCode;
+        participantId = pid || null;
+
+        document.getElementById('current-room-code').textContent = currentRoom;
+        document.getElementById('share-room-code').textContent = currentRoom;
+        document.getElementById('current-format').textContent = syllableFormat;
+        document.getElementById('current-art-style').textContent = artStyleDescriptions[artStyle];
+
+        showRoom();
+    })
+    .catch(error => {
+        console.error('Error creating room:', error);
+        alert('Failed to create room. ' + error.message);
+    });
+}
 
         function joinRoom() {
             const roomCode = document.getElementById('room-code').value.trim().toUpperCase();
