@@ -440,4 +440,25 @@
             syllableFormat = document.getElementById('syllable-format').value;
             artStyle = document.getElementById('art-style').value;
             
-            fetch
+            fetch(`${API_BASE}/api/create-room`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({format: syllableFormat, artStyle: artStyle})
+            })
+            .then(response => response.json())
+            .then(data => {
+                currentRoom = data.roomCode;
+                participantId = data.participantId;
+                document.getElementById('current-room-code').textContent = currentRoom;
+                document.getElementById('current-format').textContent = syllableFormat;
+                document.getElementById('current-art-style').textContent = artStyle;
+                document.getElementById('share-room-code').textContent = currentRoom;
+                showRoom();
+            })
+            .catch(error => {
+                console.error('Error creating room:', error);
+            });
+        }
+    </script>
+</body>
+</html>
