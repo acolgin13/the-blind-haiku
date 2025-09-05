@@ -1,159 +1,498 @@
-<script>
-    // Global state
-    let currentRoom = null;
-    let participantId = null;
-    let syllableFormat = '5-7-5';
-    let artStyle = 'watercolor';
-    const syllableCounts = {
-        '5-7-5': [5, 7, 5],
-        '3-5-3': [3, 5, 3]
-    };
-    
-    // Art style descriptions
-    const artStyleDescriptions = {
-        'watercolor': 'Watercolor painting with gentle flowing colors',
-        'children': 'Colorful children\'s book illustration, whimsical and friendly',
-        'japanese': 'Traditional Japanese ukiyo-e woodblock print style',
-        'cartoon': 'Vibrant cartoon with bold colors and simple shapes',
-        'simpsons': 'The Simpsons cartoon style with yellow characters',
-        'abstract': 'Abstract expressionist with flowing colors and shapes',
-        'picasso': 'Pablo Picasso cubist style with geometric shapes',
-        'realistic': 'Realistic photograph-like with natural lighting'
-    };
-    
-    // API base URL
-    const API_BASE = 'https://blind-haiku-api.averycolgin.workers.dev';
-
-    // On load
-    window.onload = function() {
-        loadCreditsStatus();
-        updateArtStylePreview();
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        const roomCode = urlParams.get('room');
-        if (roomCode) {
-            document.getElementById('room-code').value = roomCode.toUpperCase();
-            showJoinForm();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Blind Haiku</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        document.getElementById('art-style').addEventListener('change', updateArtStylePreview);
-        document.getElementById('room-code').addEventListener('input', function(e) {
-            e.target.value = e.target.value.toUpperCase();
-        });
-    };
-
-    function updateArtStylePreview() {
-        const style = document.getElementById('art-style').value;
-        document.getElementById('art-style-preview').textContent = artStyleDescriptions[style];
-    }
-
-    // --- Credits ---
-    function loadCreditsStatus() {
-        fetch(`${API_BASE}/api/credits`)
-        .then(r => r.json())
-        .then(data => updateCreditsDisplay(data))
-        .catch(err => {
-            console.error('Error loading credits:', err);
-            document.getElementById('credits-text').textContent = 'Credits: Unable to load';
-        });
-    }
-
-    function updateCreditsDisplay(credits) {
-        const creditsEl = document.getElementById('credits-display');
-        const textEl = document.getElementById('credits-text');
-        
-        textEl.textContent = `Daily AI images: ${credits.used}/${credits.daily_limit} used (${credits.remaining} remaining)`;
-        
-        if (credits.remaining <= 0) {
-            creditsEl.classList.add('credits-warning');
-            textEl.textContent += ' - Limit reached for today';
-        } else if (credits.remaining <= 5) {
-            creditsEl.classList.add('credits-warning');
-        } else {
-            creditsEl.classList.remove('credits-warning');
+        body {
+            font-family: 'Georgia', serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
         }
-    }
 
-    // --- Screens ---
-    function showHome() {
-        document.getElementById('home-screen').classList.remove('hidden');
-        document.getElementById('join-screen').classList.add('hidden');
-        document.getElementById('room-screen').classList.add('hidden');
-    }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
 
-    function showJoinForm() {
-        document.getElementById('home-screen').classList.add('hidden');
-        document.getElementById('join-screen').classList.remove('hidden');
-        document.getElementById('room-screen').classList.add('hidden');
-    }
+        h1 {
+            color: #4a5568;
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+            font-weight: 300;
+        }
 
-    function showRoom() {
-        document.getElementById('home-screen').classList.add('hidden');
-        document.getElementById('join-screen').classList.add('hidden');
-        document.getElementById('room-screen').classList.remove('hidden');
-    }
+        h2 {
+            color: #4a5568;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            font-weight: 300;
+        }
 
-    // --- Room creation ---
-    function createRoom() {
-        syllableFormat = document.getElementById('syllable-format').value;
-        artStyle = document.getElementById('art-style').value;
+        .subtitle {
+            color: #718096;
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
 
-        fetch(`${API_BASE}/api/create-room`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                format: syllableFormat,
-                artStyle: artStyle
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        select, input, button {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 1rem;
+            transition: transform 0.2s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .haiku-display {
+            background: #f7fafc;
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .haiku-line {
+            font-size: 1.2rem;
+            margin: 0.5rem 0;
+            color: #2d3748;
+        }
+
+        .waiting-info {
+            background: #fff5f5;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            border: 1px solid #fed7d7;
+        }
+
+        .room-code {
+            background: #f0fff4;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            border: 1px solid #c6f6d5;
+            font-family: monospace;
+            font-size: 2rem;
+            font-weight: bold;
+            letter-spacing: 0.3rem;
+            color: #2d3748;
+        }
+
+        .participant-status {
+            display: flex;
+            justify-content: space-between;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #edf2f7;
+            border-radius: 10px;
+        }
+
+        .participant {
+            text-align: center;
+            flex: 1;
+            padding: 0.5rem;
+            border-radius: 8px;
+            margin: 0 0.25rem;
+        }
+
+        .participant.completed {
+            background: #c6f6d5;
+            color: #2f855a;
+            font-weight: bold;
+        }
+
+        .participant.current {
+            background: #bee3f8;
+            color: #2c5282;
+            font-weight: bold;
+        }
+
+        .participant.waiting {
+            background: #f7fafc;
+            color: #718096;
+        }
+
+        .syllable-counter {
+            float: right;
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .credits-info {
+            background: #f0f8ff;
+            padding: 0.5rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            color: #2c5aa0;
+            border: 1px solid #b3d9ff;
+        }
+
+        .credits-warning {
+            background: #fff5f5;
+            border-color: #feb2b2;
+            color: #c53030;
+        }
+
+        .error-message {
+            background: #fed7d7;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            color: #c53030;
+            border: 1px solid #feb2b2;
+        }
+
+        .art-style-preview {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+
+        .room-info {
+            background: #edf2f7;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            text-align: left;
+        }
+
+        .share-section {
+            background: #f0fff4;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            border: 1px solid #c6f6d5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Home Screen -->
+        <div id="home-screen">
+            <h1>🌸 The Blind Haiku</h1>
+            <p class="subtitle">A red chicken production</p>
+            
+            <div id="credits-display" class="credits-info">
+                <span id="credits-text">Loading credit status...</span>
+            </div>
+            
+            <div class="form-group">
+                <label for="syllable-format">Haiku Format:</label>
+                <select id="syllable-format">
+                    <option value="5-7-5">Traditional (5-7-5 syllables)</option>
+                    <option value="3-5-3">Short (3-5-3 syllables)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="art-style">Art Style for Final Image:</label>
+                <select id="art-style">
+                    <option value="watercolor">Watercolor Painting</option>
+                    <option value="children">Children's Book Illustration</option>
+                    <option value="japanese">Traditional Japanese Art</option>
+                    <option value="cartoon">Vibrant Cartoon</option>
+                    <option value="simpsons">The Simpsons Style</option>
+                    <option value="abstract">Abstract Expressionist</option>
+                    <option value="picasso">Picasso Cubist Style</option>
+                    <option value="realistic">Realistic Photography</option>
+                </select>
+                <div class="art-style-preview" id="art-style-preview">
+                    Watercolor painting with gentle flowing colors
+                </div>
+            </div>
+
+            <button onclick="createRoom()">Create New Room</button>
+            <button onclick="showJoinForm()">Join Existing Room</button>
+        </div>
+
+        <!-- Join Form -->
+        <div id="join-screen" class="hidden">
+            <h2>Join Haiku Room</h2>
+            <div class="form-group">
+                <label for="room-code">Room Code:</label>
+                <input type="text" id="room-code" placeholder="Enter 6-letter code" maxlength="6" style="text-transform: uppercase; text-align: center; font-size: 1.5rem; letter-spacing: 0.2rem;">
+            </div>
+            <button onclick="joinRoom()">Join Room</button>
+            <button onclick="showHome()">Back</button>
+        </div>
+
+        <!-- Room Screen -->
+        <div id="room-screen" class="hidden">
+            <h2>Haiku Room</h2>
+            
+            <div class="room-info">
+                <div><strong>Room Code:</strong> <span id="current-room-code"></span></div>
+                <div><strong>Format:</strong> <span id="current-format"></span></div>
+                <div><strong>Art Style:</strong> <span id="current-art-style"></span></div>
+            </div>
+            
+            <div class="participant-status">
+                <div class="participant waiting" id="participant1">Waiting...</div>
+                <div class="participant waiting" id="participant2">Waiting...</div>
+                <div class="participant waiting" id="participant3">Waiting...</div>
+            </div>
+
+            <div id="share-section" class="share-section">
+                <h3>Invite Friends:</h3>
+                <div class="room-code" id="share-room-code"></div>
+                <button onclick="shareRoomCode()" id="share-btn">📱 Share Room Code</button>
+                <p style="font-size: 0.9rem; margin-top: 0.5rem; color: #666;">
+                    Send this code to friends so they can join!
+                </p>
+            </div>
+
+            <div id="waiting-section" class="waiting-info">
+                <p id="waiting-message">Waiting for participants...</p>
+            </div>
+
+            <div id="writing-section" class="hidden">
+                <h3 id="line-prompt">Write your line:</h3>
+                <div class="form-group">
+                    <label for="haiku-line">
+                        Line <span id="line-number">1</span> 
+                        (<span id="expected-syllables">5</span> syllables)
+                        <span class="syllable-counter" id="syllable-count">0 syllables</span>
+                    </label>
+                    <input type="text" id="haiku-line" placeholder="Enter your line..." oninput="countSyllables()">
+                </div>
+                <button onclick="submitLine()" id="submit-btn" disabled>Submit Line</button>
+            </div>
+
+            <div id="haiku-result" class="hidden">
+                <h3>Your Collaborative Haiku:</h3>
+                <div class="haiku-display">
+                    <div class="haiku-line" id="line1"></div>
+                    <div class="haiku-line" id="line2"></div>
+                    <div class="haiku-line" id="line3"></div>
+                </div>
+                <div id="ai-image-container" class="hidden">
+                    <img id="ai-image" style="max-width: 100%; border-radius: 10px; margin: 1rem 0;" alt="AI generated haiku image">
+                </div>
+                <div id="image-loading" class="hidden">
+                    <p>🎨 Creating your AI artwork...</p>
+                </div>
+                <div id="image-error" class="error-message hidden">
+                    <p id="image-error-text"></p>
+                </div>
+                <button onclick="createNewRoom()">Create Another Room</button>
+                <button onclick="shareHaiku()">Share Haiku</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentRoom = null;
+        let participantId = null;
+        let syllableFormat = '5-7-5';
+        let artStyle = 'watercolor';
+        const syllableCounts = {
+            '5-7-5': [5, 7, 5],
+            '3-5-3': [3, 5, 3]
+        };
+        
+        // Art style descriptions
+        const artStyleDescriptions = {
+            'watercolor': 'Watercolor painting with gentle flowing colors',
+            'children': 'Colorful children\'s book illustration, whimsical and friendly',
+            'japanese': 'Traditional Japanese ukiyo-e woodblock print style',
+            'cartoon': 'Vibrant cartoon with bold colors and simple shapes',
+            'simpsons': 'The Simpsons cartoon style with yellow characters',
+            'abstract': 'Abstract expressionist with flowing colors and shapes',
+            'picasso': 'Pablo Picasso cubist style with geometric shapes',
+            'realistic': 'Realistic photograph-like with natural lighting'
+        };
+        
+        // API base URL - your worker URL
+        const API_BASE = 'https://blind-haiku-api.averycolgin.workers.dev';
+
+        // Check if joining from URL
+        window.onload = function() {
+            loadCreditsStatus();
+            updateArtStylePreview();
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomCode = urlParams.get('room');
+            if (roomCode) {
+                document.getElementById('room-code').value = roomCode.toUpperCase();
+                showJoinForm();
+            }
+
+            // Add event listeners
+            document.getElementById('art-style').addEventListener('change', updateArtStylePreview);
+            document.getElementById('room-code').addEventListener('input', function(e) {
+                e.target.value = e.target.value.toUpperCase();
+            });
+        };
+
+        function updateArtStylePreview() {
+            const style = document.getElementById('art-style').value;
+            document.getElementById('art-style-preview').textContent = artStyleDescriptions[style];
+        }
+
+        function loadCreditsStatus() {
+            fetch(`${API_BASE}/api/credits`)
+            .then(response => response.json())
+            .then(data => {
+                updateCreditsDisplay(data);
             })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (!data || !data.roomCode) throw new Error("Invalid response from API");
+            .catch(error => {
+                console.error('Error loading credits:', error);
+                document.getElementById('credits-text').textContent = 'Credits: Unable to load';
+            });
+        }
 
-            currentRoom = data.roomCode;
-            participantId = data.participantId;
+        function updateCreditsDisplay(credits) {
+            const creditsEl = document.getElementById('credits-display');
+            const textEl = document.getElementById('credits-text');
+            
+            textEl.textContent = `Daily AI images: ${credits.used}/${credits.daily_limit} used (${credits.remaining} remaining)`;
+            
+            if (credits.remaining <= 0) {
+                creditsEl.classList.add('credits-warning');
+                textEl.textContent += ' - Limit reached for today';
+            } else if (credits.remaining <= 5) {
+                creditsEl.classList.add('credits-warning');
+            } else {
+                creditsEl.classList.remove('credits-warning');
+            }
+        }
 
-            // Fill in room details
-            document.getElementById('current-room-code').textContent = currentRoom;
-            document.getElementById('share-room-code').textContent = currentRoom;
-            document.getElementById('current-format').textContent = syllableFormat;
-            document.getElementById('current-art-style').textContent = artStyleDescriptions[artStyle];
+        function showHome() {
+            document.getElementById('home-screen').classList.remove('hidden');
+            document.getElementById('join-screen').classList.add('hidden');
+            document.getElementById('room-screen').classList.add('hidden');
+        }
 
-            showRoom();
-        })
-        .catch(err => {
-            console.error("Error creating room:", err);
-            alert("Failed to create room. Please try again.");
-        });
-    }
+        function showJoinForm() {
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('join-screen').classList.remove('hidden');
+            document.getElementById('room-screen').classList.add('hidden');
+        }
 
-    // --- Room join ---
-    function joinRoom() {
-        const roomCode = document.getElementById('room-code').value.trim().toUpperCase();
-        if (!roomCode) return alert("Enter a room code");
+        function showRoom() {
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('join-screen').classList.add('hidden');
+            document.getElementById('room-screen').classList.remove('hidden');
+        }
 
-        fetch(`${API_BASE}/api/join-room`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ roomCode })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (!data || !data.success) throw new Error("Join failed");
+        function createRoom() {
+            syllableFormat = document.getElementById('syllable-format').value;
+            artStyle = document.getElementById('art-style').value;
+            
+            fetch(`${API_BASE}/api/create-room`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ format: syllableFormat, artStyle: artStyle })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data || !data.roomCode) throw new Error("Invalid API response");
 
-            currentRoom = roomCode;
-            participantId = data.participantId;
+                currentRoom = data.roomCode;
+                participantId = data.participantId;
 
-            document.getElementById('current-room-code').textContent = currentRoom;
-            document.getElementById('share-room-code').textContent = currentRoom;
-            document.getElementById('current-format').textContent = data.format;
-            document.getElementById('current-art-style').textContent = artStyleDescriptions[data.artStyle];
+                document.getElementById('current-room-code').textContent = currentRoom;
+                document.getElementById('share-room-code').textContent = currentRoom;
+                document.getElementById('current-format').textContent = syllableFormat;
+                document.getElementById('current-art-style').textContent = artStyleDescriptions[artStyle];
 
-            showRoom();
-        })
-        .catch(err => {
-            console.error("Error joining room:", err);
-            alert("Failed to join room. Please check the code.");
-        });
-    }
-</script>
+                showRoom();
+            })
+            .catch(error => {
+                console.error('Error creating room:', error);
+                alert('Failed to create room. Please try again.');
+            });
+        }
+
+        function joinRoom() {
+            const roomCode = document.getElementById('room-code').value.trim().toUpperCase();
+            if (!roomCode) return alert('Enter a room code');
+            
+            fetch(`${API_BASE}/api/join-room`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ roomCode })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data || !data.success) throw new Error("Join failed");
+
+                currentRoom = roomCode;
+                participantId = data.participantId;
+
+                document.getElementById('current-room-code').textContent = currentRoom;
+                document.getElementById('share-room-code').textContent = currentRoom;
+                document.getElementById('current-format').textContent = data.format;
+                document.getElementById('current-art-style').textContent = artStyleDescriptions[data.artStyle];
+
+                showRoom();
+            })
+            .catch(error => {
+                console.error('Error joining room:', error);
+                alert('Failed to join room. Please check the code.');
+            });
+        }
+    </script>
+</body>
+</html>
