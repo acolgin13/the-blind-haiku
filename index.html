@@ -39,6 +39,13 @@
             font-weight: 300;
         }
 
+        h2 {
+            color: #4a5568;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            font-weight: 300;
+        }
+
         .subtitle {
             color: #718096;
             margin-bottom: 2rem;
@@ -116,17 +123,20 @@
             border: 1px solid #fed7d7;
         }
 
-        .share-link {
+        .room-code {
             background: #f0fff4;
-            padding: 1rem;
+            padding: 1.5rem;
             border-radius: 10px;
             margin: 1rem 0;
             border: 1px solid #c6f6d5;
-            word-break: break-all;
             font-family: monospace;
+            font-size: 2rem;
+            font-weight: bold;
+            letter-spacing: 0.3rem;
+            color: #2d3748;
         }
 
-        .player-status {
+        .participant-status {
             display: flex;
             justify-content: space-between;
             margin: 1rem 0;
@@ -135,19 +145,29 @@
             border-radius: 10px;
         }
 
-        .player {
+        .participant {
             text-align: center;
             flex: 1;
+            padding: 0.5rem;
+            border-radius: 8px;
+            margin: 0 0.25rem;
         }
 
-        .player.completed {
-            color: #38a169;
+        .participant.completed {
+            background: #c6f6d5;
+            color: #2f855a;
             font-weight: bold;
         }
 
-        .player.current {
-            color: #3182ce;
+        .participant.current {
+            background: #bee3f8;
+            color: #2c5282;
             font-weight: bold;
+        }
+
+        .participant.waiting {
+            background: #f7fafc;
+            color: #718096;
         }
 
         .syllable-counter {
@@ -180,6 +200,29 @@
             color: #c53030;
             border: 1px solid #feb2b2;
         }
+
+        .art-style-preview {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+
+        .room-info {
+            background: #edf2f7;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            text-align: left;
+        }
+
+        .share-section {
+            background: #f0fff4;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            border: 1px solid #c6f6d5;
+        }
     </style>
 </head>
 <body>
@@ -201,40 +244,65 @@
                 </select>
             </div>
 
-            <button onclick="createHaiku()">Start New Haiku</button>
-            <button onclick="showJoinForm()">Join Existing Haiku</button>
+            <div class="form-group">
+                <label for="art-style">Art Style for Final Image:</label>
+                <select id="art-style">
+                    <option value="watercolor">Watercolor Painting</option>
+                    <option value="children">Children's Book Illustration</option>
+                    <option value="japanese">Traditional Japanese Art</option>
+                    <option value="cartoon">Vibrant Cartoon</option>
+                    <option value="simpsons">The Simpsons Style</option>
+                    <option value="abstract">Abstract Expressionist</option>
+                    <option value="picasso">Picasso Cubist Style</option>
+                    <option value="realistic">Realistic Photography</option>
+                </select>
+                <div class="art-style-preview" id="art-style-preview">
+                    Soft watercolor with gentle flowing colors
+                </div>
+            </div>
+
+            <button onclick="createRoom()">Create New Room</button>
+            <button onclick="showJoinForm()">Join Existing Room</button>
         </div>
 
         <!-- Join Form -->
         <div id="join-screen" class="hidden">
-            <h2>Join Haiku Session</h2>
+            <h2>Join Haiku Room</h2>
             <div class="form-group">
-                <label for="session-id">Session ID:</label>
-                <input type="text" id="session-id" placeholder="Enter session ID from link">
+                <label for="room-code">Room Code:</label>
+                <input type="text" id="room-code" placeholder="Enter 6-letter code" maxlength="6" style="text-transform: uppercase; text-align: center; font-size: 1.5rem; letter-spacing: 0.2rem;">
             </div>
-            <button onclick="joinHaiku()">Join Session</button>
+            <button onclick="joinRoom()">Join Room</button>
             <button onclick="showHome()">Back</button>
         </div>
 
-        <!-- Waiting/Playing Screen -->
-        <div id="game-screen" class="hidden">
-            <h2>Haiku Session</h2>
+        <!-- Room Screen -->
+        <div id="room-screen" class="hidden">
+            <h2>Haiku Room</h2>
             
-            <div class="player-status">
-                <div class="player" id="player1">Player 1</div>
-                <div class="player" id="player2">Player 2</div>
-                <div class="player" id="player3">Player 3</div>
+            <div class="room-info">
+                <div><strong>Room Code:</strong> <span id="current-room-code"></span></div>
+                <div><strong>Format:</strong> <span id="current-format"></span></div>
+                <div><strong>Art Style:</strong> <span id="current-art-style"></span></div>
+            </div>
+            
+            <div class="participant-status">
+                <div class="participant waiting" id="participant1">Waiting...</div>
+                <div class="participant waiting" id="participant2">Waiting...</div>
+                <div class="participant waiting" id="participant3">Waiting...</div>
             </div>
 
-            <div id="share-section">
-                <h3>Share this link with your friends:</h3>
-                <div class="share-link" id="share-link"></div>
-                <button onclick="copyLink()">Copy Link</button>
+            <div id="share-section" class="share-section">
+                <h3>Invite Friends:</h3>
+                <div class="room-code" id="share-room-code"></div>
+                <button onclick="shareRoomCode()" id="share-btn">📱 Share Room Code</button>
+                <p style="font-size: 0.9rem; margin-top: 0.5rem; color: #666;">
+                    Send this code to friends so they can join!
+                </p>
             </div>
 
             <div id="waiting-section" class="waiting-info">
-                <p>Waiting for your turn...</p>
-                <p id="waiting-message">Players are joining...</p>
+                <p id="waiting-message">Waiting for participants...</p>
             </div>
 
             <div id="writing-section" class="hidden">
@@ -258,7 +326,7 @@
                     <div class="haiku-line" id="line3"></div>
                 </div>
                 <div id="ai-image-container" class="hidden">
-                    <img id="ai-image" style="max-width: 100%; border-radius: 10px; margin: 1rem 0;" alt="AI generated image">
+                    <img id="ai-image" style="max-width: 100%; border-radius: 10px; margin: 1rem 0;" alt="AI generated haiku image">
                 </div>
                 <div id="image-loading" class="hidden">
                     <p>🎨 Creating your AI artwork...</p>
@@ -266,7 +334,7 @@
                 <div id="image-error" class="error-message hidden">
                     <p id="image-error-text"></p>
                 </div>
-                <button onclick="createNewHaiku()">Create Another</button>
+                <button onclick="createNewRoom()">Create Another Room</button>
                 <button onclick="shareHaiku()">Share Haiku</button>
             </div>
         </div>
@@ -274,12 +342,25 @@
 
     <script>
         // Global state
-        let currentSession = null;
-        let playerNumber = null;
+        let currentRoom = null;
+        let participantId = null;
         let syllableFormat = '5-7-5';
+        let artStyle = 'watercolor';
         const syllableCounts = {
             '5-7-5': [5, 7, 5],
             '3-5-3': [3, 5, 3]
+        };
+        
+        // Art style descriptions
+        const artStyleDescriptions = {
+            'watercolor': 'Soft watercolor with gentle flowing colors',
+            'children': 'Colorful children\'s book illustration, whimsical and friendly',
+            'japanese': 'Traditional Japanese ukiyo-e woodblock print style',
+            'cartoon': 'Vibrant cartoon with bold colors and simple shapes',
+            'simpsons': 'The Simpsons cartoon style with yellow characters',
+            'abstract': 'Abstract expressionist with flowing colors and shapes',
+            'picasso': 'Pablo Picasso cubist style with geometric shapes',
+            'realistic': 'Realistic photograph-like with natural lighting'
         };
         
         // API base URL - your worker URL
@@ -288,14 +369,26 @@
         // Check if joining from URL
         window.onload = function() {
             loadCreditsStatus();
+            updateArtStylePreview();
             
             const urlParams = new URLSearchParams(window.location.search);
-            const sessionId = urlParams.get('session');
-            if (sessionId) {
-                document.getElementById('session-id').value = sessionId;
+            const roomCode = urlParams.get('room');
+            if (roomCode) {
+                document.getElementById('room-code').value = roomCode.toUpperCase();
                 showJoinForm();
             }
+
+            // Add event listeners
+            document.getElementById('art-style').addEventListener('change', updateArtStylePreview);
+            document.getElementById('room-code').addEventListener('input', function(e) {
+                e.target.value = e.target.value.toUpperCase();
+            });
         };
+
+        function updateArtStylePreview() {
+            const style = document.getElementById('art-style').value;
+            document.getElementById('art-style-preview').textContent = artStyleDescriptions[style];
+        }
 
         function loadCreditsStatus() {
             fetch(`${API_BASE}/api/credits`)
@@ -328,148 +421,114 @@
         function showHome() {
             document.getElementById('home-screen').classList.remove('hidden');
             document.getElementById('join-screen').classList.add('hidden');
-            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('room-screen').classList.add('hidden');
         }
 
         function showJoinForm() {
             document.getElementById('home-screen').classList.add('hidden');
             document.getElementById('join-screen').classList.remove('hidden');
-            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('room-screen').classList.add('hidden');
         }
 
-        function createHaiku() {
+        function showRoom() {
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('join-screen').classList.add('hidden');
+            document.getElementById('room-screen').classList.remove('hidden');
+        }
+
+        function createRoom() {
             syllableFormat = document.getElementById('syllable-format').value;
+            artStyle = document.getElementById('art-style').value;
             
-            // Call API to create session
-            fetch(`${API_BASE}/api/sessions`, {
+            fetch(`${API_BASE}/api/rooms`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ format: syllableFormat })
+                body: JSON.stringify({ format: syllableFormat, artStyle: artStyle })
             })
             .then(response => response.json())
             .then(data => {
-                currentSession = data.session;
-                joinSession(data.sessionId, 1);
+                currentRoom = data.room;
+                participantId = 1; // Room creator is always participant 1
+                setupRoom(data.roomCode);
             })
             .catch(error => {
-                console.error('Error creating session:', error);
-                // Fallback to localStorage for testing
-                const sessionId = generateSessionId();
-                currentSession = {
-                    id: sessionId,
-                    format: syllableFormat,
-                    players: [],
-                    lines: [],
-                    currentPlayer: 1
-                };
-                localStorage.setItem('haiku_' + sessionId, JSON.stringify(currentSession));
-                joinSession(sessionId, 1);
+                console.error('Error creating room:', error);
+                alert('Failed to create room. Please try again.');
             });
         }
 
-        function joinHaiku() {
-            const sessionId = document.getElementById('session-id').value.trim();
-            if (!sessionId) {
-                alert('Please enter a session ID');
+        function joinRoom() {
+            const roomCode = document.getElementById('room-code').value.trim().toUpperCase();
+            if (!roomCode || roomCode.length !== 6) {
+                alert('Please enter a valid 6-letter room code');
                 return;
             }
             
-            // Try API first
-            fetch(`${API_BASE}/api/sessions/${sessionId}`)
+            fetch(`${API_BASE}/api/rooms/${roomCode}/join`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            })
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
-                    throw new Error(data.error);
-                }
-                currentSession = data.session;
-                const playerNum = currentSession.players.length + 1;
-                
-                if (playerNum > 3) {
-                    alert('This session is full');
+                    alert(data.error);
                     return;
                 }
-                
-                // Join the session
-                return fetch(`${API_BASE}/api/sessions/${sessionId}/join`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ playerNumber: playerNum })
-                });
-            })
-            .then(response => response.json())
-            .then(data => {
-                currentSession = data.session;
-                const playerNum = currentSession.players.length;
-                joinSession(sessionId, playerNum);
+                currentRoom = data.room;
+                participantId = data.participantId;
+                setupRoom(roomCode);
+                if (data.rejoined) {
+                    console.log('Rejoined existing session');
+                }
             })
             .catch(error => {
-                console.error('Error joining session:', error);
-                // Fallback to localStorage
-                const sessionData = localStorage.getItem('haiku_' + sessionId);
-                if (!sessionData) {
-                    alert('Session not found');
-                    return;
-                }
-                
-                currentSession = JSON.parse(sessionData);
-                const playerNum = currentSession.players.length + 1;
-                
-                if (playerNum > 3) {
-                    alert('This session is full');
-                    return;
-                }
-                
-                joinSession(sessionId, playerNum);
+                console.error('Error joining room:', error);
+                alert('Failed to join room. Please check the code and try again.');
             });
         }
 
-        function joinSession(sessionId, playerNum) {
-            playerNumber = playerNum;
-            currentSession.players.push(playerNum);
+        function setupRoom(roomCode) {
+            showRoom();
             
-            // Update session in storage (fallback)
-            localStorage.setItem('haiku_' + sessionId, JSON.stringify(currentSession));
+            // Update room info
+            document.getElementById('current-room-code').textContent = roomCode;
+            document.getElementById('current-format').textContent = currentRoom.format;
+            document.getElementById('current-art-style').textContent = artStyleDescriptions[currentRoom.artStyle] || currentRoom.artStyle;
+            document.getElementById('share-room-code').textContent = roomCode;
             
-            // Show game screen
-            document.getElementById('home-screen').classList.add('hidden');
-            document.getElementById('join-screen').classList.add('hidden');
-            document.getElementById('game-screen').classList.remove('hidden');
-            
-            // Set up share link
-            const shareUrl = `${window.location.origin}${window.location.pathname}?session=${sessionId}`;
-            document.getElementById('share-link').textContent = shareUrl;
-            
-            updateGameState();
-            startGameLoop();
+            updateRoomState();
+            startRoomLoop();
         }
 
-        function updateGameState() {
-            // Update player status
+        function updateRoomState() {
+            // Update participant status
             for (let i = 1; i <= 3; i++) {
-                const playerEl = document.getElementById(`player${i}`);
-                if (currentSession.players.includes(i)) {
-                    if (currentSession.lines[i-1]) {
-                        playerEl.classList.add('completed');
-                        playerEl.classList.remove('current');
-                        playerEl.textContent = `Player ${i} ✓`;
-                    } else if (i === currentSession.currentPlayer) {
-                        playerEl.classList.add('current');
-                        playerEl.classList.remove('completed');
-                        playerEl.textContent = `Player ${i} (writing...)`;
+                const participantEl = document.getElementById(`participant${i}`);
+                const participant = currentRoom.participants.find(p => p.id === i);
+                
+                if (participant) {
+                    const hasSubmitted = currentRoom.lines.some(l => l.participantId === i);
+                    if (hasSubmitted) {
+                        participantEl.className = 'participant completed';
+                        participantEl.textContent = `Participant ${i} ✓`;
+                    } else if (i === currentRoom.currentTurn) {
+                        participantEl.className = 'participant current';
+                        participantEl.textContent = `Participant ${i} (writing...)`;
                     } else {
-                        playerEl.classList.remove('completed', 'current');
-                        playerEl.textContent = `Player ${i}`;
+                        participantEl.className = 'participant waiting';
+                        participantEl.textContent = `Participant ${i}`;
                     }
                 } else {
-                    playerEl.classList.remove('completed', 'current');
-                    playerEl.textContent = `Player ${i} (waiting to join)`;
+                    participantEl.className = 'participant waiting';
+                    participantEl.textContent = 'Waiting...';
                 }
             }
 
             // Show appropriate section
-            if (currentSession.lines.length === 3) {
+            if (currentRoom.lines.length === 3) {
                 showCompletedHaiku();
-            } else if (playerNumber === currentSession.currentPlayer) {
+            } else if (participantId === currentRoom.currentTurn && currentRoom.participants.length >= 1) {
                 showWritingSection();
             } else {
                 showWaitingSection();
@@ -480,15 +539,16 @@
             document.getElementById('waiting-section').classList.remove('hidden');
             document.getElementById('writing-section').classList.add('hidden');
             document.getElementById('haiku-result').classList.add('hidden');
+            document.getElementById('share-section').classList.remove('hidden');
             
-            const playersJoined = currentSession.players.length;
-            const linesWritten = currentSession.lines.length;
+            const participantsJoined = currentRoom.participants.length;
+            const linesWritten = currentRoom.lines.length;
             
             let message;
-            if (playersJoined < 3) {
-                message = `Waiting for ${3 - playersJoined} more player(s) to join...`;
-            } else if (linesWritten < playerNumber - 1) {
-                message = `Waiting for player ${currentSession.currentPlayer} to write their line...`;
+            if (participantsJoined < 3) {
+                message = `Waiting for ${3 - participantsJoined} more participant(s) to join...`;
+            } else if (linesWritten < participantId - 1) {
+                message = `Waiting for participant ${currentRoom.currentTurn} to write their line...`;
             } else {
                 message = "Waiting for your turn...";
             }
@@ -500,9 +560,10 @@
             document.getElementById('waiting-section').classList.add('hidden');
             document.getElementById('writing-section').classList.remove('hidden');
             document.getElementById('haiku-result').classList.add('hidden');
+            document.getElementById('share-section').classList.add('hidden');
             
-            const lineNum = currentSession.lines.length + 1;
-            const expectedSyllables = syllableCounts[currentSession.format][lineNum - 1];
+            const lineNum = currentRoom.lines.length + 1;
+            const expectedSyllables = syllableCounts[currentRoom.format][lineNum - 1];
             
             document.getElementById('line-number').textContent = lineNum;
             document.getElementById('expected-syllables').textContent = expectedSyllables;
@@ -518,32 +579,26 @@
             
             // Display the haiku
             for (let i = 0; i < 3; i++) {
-                document.getElementById(`line${i + 1}`).textContent = currentSession.lines[i];
+                document.getElementById(`line${i + 1}`).textContent = currentRoom.lines[i].line;
             }
             
             // Handle image display
-            if (currentSession.imageUrl) {
-                // Image is ready
-                document.getElementById('ai-image').src = currentSession.imageUrl;
+            if (currentRoom.imageUrl) {
+                document.getElementById('ai-image').src = currentRoom.imageUrl;
                 document.getElementById('ai-image-container').classList.remove('hidden');
                 document.getElementById('image-loading').classList.add('hidden');
                 document.getElementById('image-error').classList.add('hidden');
-            } else if (currentSession.imageError) {
-                // Image generation failed
-                document.getElementById('image-error-text').textContent = currentSession.imageError;
+            } else if (currentRoom.imageError) {
+                document.getElementById('image-error-text').textContent = currentRoom.imageError;
                 document.getElementById('image-error').classList.remove('hidden');
                 document.getElementById('image-loading').classList.add('hidden');
                 document.getElementById('ai-image-container').classList.add('hidden');
-            } else if (currentSession.imageGenerated === false) {
-                // Image generation is in progress
+            } else if (currentRoom.imageGenerated === 'generating') {
                 document.getElementById('ai-image-container').classList.add('hidden');
                 document.getElementById('image-loading').classList.remove('hidden');
                 document.getElementById('image-error').classList.add('hidden');
-                
-                // Start checking for image updates
                 checkForImageUpdates();
             } else {
-                // Hide all image-related elements if no image generation attempted
                 document.getElementById('ai-image-container').classList.add('hidden');
                 document.getElementById('image-loading').classList.add('hidden');
                 document.getElementById('image-error').classList.add('hidden');
@@ -555,8 +610,8 @@
             const syllables = estimateSyllables(text);
             document.getElementById('syllable-count').textContent = `${syllables} syllables`;
             
-            const lineNum = currentSession.lines.length + 1;
-            const expectedSyllables = syllableCounts[currentSession.format][lineNum - 1];
+            const lineNum = currentRoom.lines.length + 1;
+            const expectedSyllables = syllableCounts[currentRoom.format][lineNum - 1];
             const submitBtn = document.getElementById('submit-btn');
             
             submitBtn.disabled = syllables !== expectedSyllables || text.trim() === '';
@@ -565,18 +620,15 @@
         function estimateSyllables(text) {
             if (!text || text.trim() === '') return 0;
             
-            // Split into words and count syllables for each
             const words = text.toLowerCase().trim().split(/\s+/);
             let totalSyllables = 0;
             
             for (let word of words) {
-                // Remove punctuation
                 word = word.replace(/[.,!?;:"'()-]/g, '');
                 if (word.length === 0) continue;
                 
                 let syllables = 0;
                 
-                // Special cases for common words
                 const specialCases = {
                     'the': 1, 'a': 1, 'an': 1, 'and': 1, 'or': 1, 'but': 1, 'in': 1, 'on': 1, 'at': 1, 'to': 1, 'for': 1, 'of': 1, 'with': 1, 'by': 1,
                     'through': 1, 'does': 1, 'goes': 1, 'comes': 1, 'some': 1, 'love': 1, 'above': 1, 'move': 1, 'prove': 1, 'live': 1, 'give': 1,
@@ -589,21 +641,17 @@
                 if (specialCases[word]) {
                     syllables = specialCases[word];
                 } else {
-                    // Count vowel groups
                     let vowelGroups = word.match(/[aeiouy]+/g);
                     syllables = vowelGroups ? vowelGroups.length : 1;
                     
-                    // Subtract silent e
                     if (word.endsWith('e') && syllables > 1) {
                         syllables--;
                     }
                     
-                    // Handle double vowels that should be one syllable
                     if (word.match(/[aeiou]{2}/)) {
                         const doubleVowels = word.match(/[aeiou]{2}/g);
                         if (doubleVowels) {
                             for (let dv of doubleVowels) {
-                                // Common double vowels that are one syllable
                                 if (['ea', 'ee', 'ie', 'oo', 'ou', 'ai', 'ay', 'ei', 'ey', 'oa', 'oe', 'ui'].includes(dv)) {
                                     syllables--;
                                 }
@@ -611,7 +659,6 @@
                         }
                     }
                     
-                    // Minimum syllables is 1
                     syllables = Math.max(1, syllables);
                 }
                 
@@ -624,38 +671,34 @@
         function submitLine() {
             const line = document.getElementById('haiku-line').value.trim();
             
-            // Try API first
-            fetch(`${API_BASE}/api/sessions/${currentSession.id}/submit`, {
+            fetch(`${API_BASE}/api/rooms/${currentRoom.code}/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ line, playerNumber })
+                body: JSON.stringify({ line, participantId })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
-                    throw new Error(data.error);
+                    alert(data.error);
+                    return;
                 }
-                currentSession = data.session;
-                updateGameState();
+                currentRoom = data.room;
+                updateRoomState();
             })
             .catch(error => {
                 console.error('Error submitting line:', error);
-                // Fallback to localStorage
-                currentSession.lines.push(line);
-                currentSession.currentPlayer++;
-                localStorage.setItem('haiku_' + currentSession.id, JSON.stringify(currentSession));
-                updateGameState();
+                alert('Failed to submit line. Please try again.');
             });
         }
 
         function checkForImageUpdates() {
             const checkInterval = setInterval(() => {
-                fetch(`${API_BASE}/api/sessions/${currentSession.id}`)
+                fetch(`${API_BASE}/api/rooms/${currentRoom.code}`)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.session && data.session.imageUrl) {
-                        currentSession.imageUrl = data.session.imageUrl;
-                        document.getElementById('ai-image').src = currentSession.imageUrl;
+                    if (data.room && data.room.imageUrl) {
+                        currentRoom = data.room;
+                        document.getElementById('ai-image').src = currentRoom.imageUrl;
                         document.getElementById('ai-image-container').classList.remove('hidden');
                         document.getElementById('image-loading').classList.add('hidden');
                         clearInterval(checkInterval);
@@ -663,90 +706,57 @@
                 })
                 .catch(error => {
                     console.error('Error checking for image updates:', error);
-                    // Stop checking after a while if there are errors
-                    setTimeout(() => clearInterval(checkInterval), 30000);
                 });
-            }, 3000); // Check every 3 seconds
+            }, 3000);
             
-            // Stop checking after 2 minutes max
             setTimeout(() => {
                 clearInterval(checkInterval);
                 document.getElementById('image-loading').classList.add('hidden');
             }, 120000);
         }
 
-        function startGameLoop() {
-            // Check for updates every 15 seconds
+        function startRoomLoop() {
             setInterval(() => {
-                if (!currentSession || currentSession.lines.length === 3) return;
+                if (!currentRoom || currentRoom.lines.length === 3) return;
                 
-                fetch(`${API_BASE}/api/sessions/${currentSession.id}`)
+                fetch(`${API_BASE}/api/rooms/${currentRoom.code}`)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.session && JSON.stringify(data.session) !== JSON.stringify(currentSession)) {
-                        currentSession = data.session;
-                        updateGameState();
+                    if (data.room && JSON.stringify(data.room) !== JSON.stringify(currentRoom)) {
+                        currentRoom = data.room;
+                        updateRoomState();
                     }
                 })
                 .catch(error => {
-                    console.error('Error in game loop:', error);
-                    // Fallback to localStorage
-                    const sessionData = localStorage.getItem('haiku_' + currentSession.id);
-                    if (sessionData) {
-                        const updatedSession = JSON.parse(sessionData);
-                        if (JSON.stringify(updatedSession) !== JSON.stringify(currentSession)) {
-                            currentSession = updatedSession;
-                            updateGameState();
-                        }
-                    }
+                    console.error('Error in room loop:', error);
                 });
-            }, 15000);
+            }, 5000);
         }
 
-        function generateSessionId() {
-            return Math.random().toString(36).substring(2, 8).toUpperCase();
-        }
-
-        function copyLink() {
-            const link = document.getElementById('share-link').textContent;
-            navigator.clipboard.writeText(link).then(() => {
-                alert('Link copied to clipboard!');
-            });
-        }
-
-        function generateImage() {
-            const haiku = currentSession.lines.join('\n');
-            document.getElementById('image-loading').classList.remove('hidden');
+        function shareRoomCode() {
+            const roomCode = currentRoom.code;
+            const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
             
-            fetch(`${API_BASE}/api/generate-image`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ haiku })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.imageUrl) {
-                    document.getElementById('ai-image').src = data.imageUrl;
-                    document.getElementById('ai-image-container').classList.remove('hidden');
-                } else {
-                    alert('Failed to generate image. Please try again.');
-                }
-                document.getElementById('image-loading').classList.add('hidden');
-            })
-            .catch(error => {
-                console.error('Error generating image:', error);
-                alert('Failed to generate image. Please try again.');
-                document.getElementById('image-loading').classList.add('hidden');
-            });
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Join our Haiku room!',
+                    text: `Join our collaborative haiku room with code: ${roomCode}`,
+                    url: shareUrl
+                });
+            } else {
+                navigator.clipboard.writeText(roomCode).then(() => {
+                    alert('Room code copied to clipboard!');
+                });
+            }
         }
 
-        function createNewHaiku() {
+        function createNewRoom() {
             showHome();
-            loadCreditsStatus(); // Refresh credit status
+            loadCreditsStatus();
         }
 
         function shareHaiku() {
-            const haiku = currentSession.lines.join('\n');
+            const haiku = currentRoom.lines.map(l => l.line).join('\n');
             if (navigator.share) {
                 navigator.share({
                     title: 'Our Collaborative Haiku',
