@@ -152,20 +152,8 @@
             padding: 0.5rem 0.25rem;
             border-radius: 8px;
             font-size: 0.85rem;
-            min-width: 0; /* Allow flex items to shrink below content size */
+            min-width: 0;
             word-wrap: break-word;
-        }
-
-        @media (max-width: 480px) {
-            .participant {
-                font-size: 0.75rem;
-                padding: 0.4rem 0.2rem;
-            }
-            
-            .participant-status {
-                padding: 0.25rem;
-                gap: 0.15rem;
-            }
         }
 
         .participant.completed {
@@ -183,6 +171,18 @@
         .participant.waiting {
             background: #f7fafc;
             color: #718096;
+        }
+
+        @media (max-width: 480px) {
+            .participant {
+                font-size: 0.75rem;
+                padding: 0.4rem 0.2rem;
+            }
+            
+            .participant-status {
+                padding: 0.25rem;
+                gap: 0.15rem;
+            }
         }
 
         .syllable-counter {
@@ -361,12 +361,13 @@
         let participantId = null;
         let syllableFormat = '5-7-5';
         let artStyle = 'watercolor';
+        let refreshInterval = null;
+        
         const syllableCounts = {
             '5-7-5': [5, 7, 5],
             '3-5-3': [3, 5, 3]
         };
         
-        // Art style descriptions
         const artStyleDescriptions = {
             'watercolor': 'Watercolor painting with gentle flowing colors',
             'children': 'Colorful children\'s book illustration, whimsical and friendly',
@@ -378,7 +379,6 @@
             'realistic': 'Realistic photograph-like with natural lighting'
         };
         
-        // API base URL
         const API_BASE = 'https://blind-haiku-api.averycolgin.workers.dev';
 
         // Initialize app
@@ -386,11 +386,16 @@
             loadCreditsStatus();
             updateArtStylePreview();
             
+            // Check if rejoining room from URL or localStorage
             const urlParams = new URLSearchParams(window.location.search);
             const roomCode = urlParams.get('room');
+            const savedRoomCode = localStorage.getItem('currentRoomCode');
+            const savedParticipantId = localStorage.getItem('participantId');
+            
             if (roomCode) {
-                document.getElementById('room-code').value = roomCode.toUpperCase();
-                showJoinForm();
+                rejoinRoom(roomCode);
+            } else if (savedRoomCode && savedParticipantId) {
+                rejoinRoom(savedRoomCode);
             }
 
             // Add event listeners
@@ -399,6 +404,26 @@
                 e.target.value = e.target.value.toUpperCase();
             });
         });
+
+        function rejoinRoom(roomCode) {
+            fetch(API_BASE + '/api/rooms/' + roomCode)
+            .then(response => response.json())
+            .then(data => {
+                if (data.room) {
+                    currentRoom = data.room;
+                    participantId = parseInt(localStorage.getItem('participantId'));
+                    setupRoom(roomCode);
+                } else {
+                    localStorage.removeItem('currentRoomCode');
+                    localStorage.removeItem('participantId');
+                }
+            })
+            .catch(error => {
+                console.error('Error rejoining room:', error);
+                localStorage.removeItem('currentRoomCode');
+                localStorage.removeItem('participantId');
+            });
+        }
 
         function updateArtStylePreview() {
             const style = document.getElementById('art-style').value;
@@ -437,6 +462,12 @@
             document.getElementById('home-screen').classList.remove('hidden');
             document.getElementById('join-screen').classList.add('hidden');
             document.getElementById('room-screen').classList.add('hidden');
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+            localStorage.removeItem('currentRoomCode');
+            localStorage.removeItem('participantId');
         }
 
         function showJoinForm() {
@@ -468,6 +499,8 @@
                 }
                 currentRoom = data.room;
                 participantId = data.participantId;
+                localStorage.setItem('currentRoomCode', data.roomCode);
+                localStorage.setItem('participantId', participantId);
                 setupRoom(data.roomCode);
             })
             .catch(error => {
@@ -496,10 +529,9 @@
                 }
                 currentRoom = data.room;
                 participantId = data.participantId;
+                localStorage.setItem('currentRoomCode', roomCode);
+                localStorage.setItem('participantId', participantId);
                 setupRoom(roomCode);
-                if (data.rejoined) {
-                    console.log('Rejoined existing session');
-                }
             })
             .catch(error => {
                 console.error('Error joining room:', error);
@@ -510,14 +542,33 @@
         function setupRoom(roomCode) {
             showRoom();
             
-            // Update room info
             document.getElementById('current-room-code').textContent = roomCode;
             document.getElementById('current-format').textContent = currentRoom.format;
             document.getElementById('current-art-style').textContent = artStyleDescriptions[currentRoom.artStyle] || currentRoom.artStyle;
             document.getElementById('share-room-code').textContent = roomCode;
             
             updateRoomState();
-            startRoomLoop();
+            startAutoRefresh();
+        }
+
+        function startAutoRefresh() {
+            if (refreshInterval) clearInterval(refreshInterval);
+            
+            refreshInterval = setInterval(() => {
+                if (!currentRoom) return;
+                
+                fetch(API_BASE + '/api/rooms/' + currentRoom.code)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.room) {
+                        currentRoom = data.room;
+                        updateRoomState();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error refreshing room:', error);
+                });
+            }, 30000); // Refresh every 30 seconds
         }
 
         function updateRoomState() {
@@ -531,12 +582,9 @@
                     if (hasSubmitted) {
                         participantEl.className = 'participant completed';
                         participantEl.textContent = 'Participant ' + i + ' ✓';
-                    } else if (i === currentRoom.currentTurn) {
-                        participantEl.className = 'participant current';
-                        participantEl.textContent = 'Participant ' + i + ' (writing...)';
                     } else {
                         participantEl.className = 'participant waiting';
-                        participantEl.textContent = 'Participant ' + i;
+                        participantEl.textContent = 'Participant ' + i + ' (writing...)';
                     }
                 } else {
                     participantEl.className = 'participant waiting';
@@ -547,10 +595,13 @@
             // Show appropriate section
             if (currentRoom.lines.length === 3) {
                 showCompletedHaiku();
-            } else if (participantId === currentRoom.currentTurn && currentRoom.participants.length >= 1) {
-                showWritingSection();
             } else {
-                showWaitingSection();
+                const myLineSubmitted = currentRoom.lines.some(l => l.participantId === participantId);
+                if (myLineSubmitted) {
+                    showWaitingSection();
+                } else {
+                    showWritingSection();
+                }
             }
         }
 
@@ -560,16 +611,31 @@
             document.getElementById('haiku-result').classList.add('hidden');
             document.getElementById('share-section').classList.remove('hidden');
             
-            const participantsJoined = currentRoom.participants.length;
-            const linesWritten = currentRoom.lines.length;
+            const waitingParticipants = [];
+            for (let i = 1; i <= 3; i++) {
+                const participant = currentRoom.participants.find(p => p.id === i);
+                if (participant) {
+                    const hasSubmitted = currentRoom.lines.some(l => l.participantId === i);
+                    if (!hasSubmitted) {
+                        waitingParticipants.push(i);
+                    }
+                }
+            }
             
             let message;
+            const participantsJoined = currentRoom.participants.length;
+            
             if (participantsJoined < 3) {
                 message = 'Waiting for ' + (3 - participantsJoined) + ' more participant(s) to join...';
-            } else if (linesWritten < participantId - 1) {
-                message = 'Waiting for participant ' + currentRoom.currentTurn + ' to write their line...';
+            } else if (waitingParticipants.length > 0) {
+                if (waitingParticipants.length === 1) {
+                    message = 'Waiting for participant ' + waitingParticipants[0] + ' to finish writing...';
+                } else {
+                    const lastParticipant = waitingParticipants.pop();
+                    message = 'Waiting for participants ' + waitingParticipants.join(', ') + ' and ' + lastParticipant + ' to finish writing...';
+                }
             } else {
-                message = "Waiting for your turn...";
+                message = 'All lines submitted! Generating your haiku...';
             }
             
             document.getElementById('waiting-message').textContent = message;
@@ -581,10 +647,9 @@
             document.getElementById('haiku-result').classList.add('hidden');
             document.getElementById('share-section').classList.add('hidden');
             
-            const lineNum = currentRoom.lines.length + 1;
-            const expectedSyllables = syllableCounts[currentRoom.format][lineNum - 1];
+            const expectedSyllables = syllableCounts[currentRoom.format][participantId - 1];
             
-            document.getElementById('line-number').textContent = lineNum;
+            document.getElementById('line-number').textContent = participantId;
             document.getElementById('expected-syllables').textContent = expectedSyllables;
             document.getElementById('haiku-line').value = '';
             countSyllables();
@@ -596,12 +661,14 @@
             document.getElementById('haiku-result').classList.remove('hidden');
             document.getElementById('share-section').classList.add('hidden');
             
-            // Display the haiku
+            const sortedLines = currentRoom.lines.sort((a, b) => a.participantId - b.participantId);
+            
             for (let i = 0; i < 3; i++) {
-                document.getElementById('line' + (i + 1)).textContent = currentRoom.lines[i].line;
+                if (sortedLines[i]) {
+                    document.getElementById('line' + (i + 1)).textContent = sortedLines[i].line;
+                }
             }
             
-            // Handle image display
             if (currentRoom.imageUrl) {
                 document.getElementById('ai-image').src = currentRoom.imageUrl;
                 document.getElementById('ai-image-container').classList.remove('hidden');
@@ -616,7 +683,6 @@
                 document.getElementById('ai-image-container').classList.add('hidden');
                 document.getElementById('image-loading').classList.remove('hidden');
                 document.getElementById('image-error').classList.add('hidden');
-                checkForImageUpdates();
             } else {
                 document.getElementById('ai-image-container').classList.add('hidden');
                 document.getElementById('image-loading').classList.add('hidden');
@@ -629,8 +695,7 @@
             const syllables = estimateSyllables(text);
             document.getElementById('syllable-count').textContent = syllables + ' syllables';
             
-            const lineNum = currentRoom.lines.length + 1;
-            const expectedSyllables = syllableCounts[currentRoom.format][lineNum - 1];
+            const expectedSyllables = syllableCounts[currentRoom.format][participantId - 1];
             const submitBtn = document.getElementById('submit-btn');
             
             submitBtn.disabled = syllables !== expectedSyllables || text.trim() === '';
@@ -646,58 +711,32 @@
                 word = word.replace(/[.,!?;:"'()-]/g, '');
                 if (word.length === 0) continue;
                 
-                let syllables = 0;
-                
-                // Comprehensive special cases dictionary
                 const specialCases = {
-                    // Single syllable words that might be counted wrong
                     'the': 1, 'a': 1, 'an': 1, 'and': 1, 'or': 1, 'but': 1, 'in': 1, 'on': 1, 'at': 1, 'to': 1, 'for': 1, 'of': 1, 'with': 1, 'by': 1,
                     'through': 1, 'does': 1, 'goes': 1, 'comes': 1, 'some': 1, 'love': 1, 'above': 1, 'move': 1, 'prove': 1, 'live': 1, 'give': 1,
-                    'have': 1, 'made': 1, 'are': 1, 'were': 1, 'here': 1, 'there': 1, 'where': 1, 'care': 1, 'share': 1, 'rare': 1, 'bare': 1,
-                    'one': 1, 'once': 1, 'done': 1, 'gone': 1, 'none': 1, 'come': 1, 'home': 1, 'some': 1, 'time': 1, 'make': 1, 'take': 1,
-                    'quite': 1, 'white': 1, 'write': 1, 'while': 1, 'smile': 1, 'style': 1, 'whole': 1, 'close': 1, 'those': 1, 'chose': 1,
-                    
-                    // Two syllable words
-                    'being': 2, 'going': 2, 'doing': 2, 'seeing': 2, 'feeling': 2, 'nothing': 2, 'something': 2, 'little': 2, 'people': 2,
                     'fire': 2, 'hour': 2, 'power': 2, 'flower': 2, 'tower': 2, 'shower': 2, 'water': 2, 'better': 2, 'letter': 2, 'matter': 2,
                     'orange': 2, 'purple': 2, 'circle': 2, 'simple': 2, 'table': 2, 'apple': 2, 'bottle': 2, 'middle': 2, 'single': 2,
                     'mountain': 2, 'fountain': 2, 'certain': 2, 'curtain': 2, 'captain': 2, 'listen': 2, 'often': 2, 'butter': 2, 'summer': 2,
                     'ocean': 2, 'nation': 2, 'station': 2, 'action': 2, 'question': 2, 'mention': 2, 'winter': 2, 'sister': 2, 'mister': 2,
                     'thoughtless': 2, 'business': 2, 'into': 2, 'upon': 2, 'about': 2, 'around': 2, 'never': 2, 'ever': 2, 'over': 2, 'under': 2,
-                    
-                    // Three syllable words
+                    'being': 2, 'going': 2, 'doing': 2, 'seeing': 2, 'feeling': 2, 'nothing': 2, 'something': 2, 'little': 2, 'people': 2,
                     'everything': 3, 'attention': 3, 'intention': 3, 'beautiful': 3, 'different': 3, 'general': 3, 'several': 3, 'interest': 3,
                     'memory': 3, 'favorite': 3, 'every': 3, 'family': 3, 'camera': 3, 'serious': 3, 'curious': 3, 'obvious': 3, 'previous': 3,
                     'various': 3, 'terrible': 3, 'possible': 3, 'horrible': 3, 'company': 3, 'another': 3, 'together': 3, 'however': 3,
-                    'remember': 3, 'consider': 3, 'imagine': 3, 'important': 3, 'energy': 3, 'continue': 3, 'probably': 3, 'already': 3,
-                    'creating': 3, 'material': 3, 'natural': 3, 'suddenly': 3, 'certainly': 3, 'quietly': 3, 'carefully': 3, 'recently': 3,
-                    
-                    // Four syllable words
-                    'comfortable': 4, 'vegetable': 4, 'incredible': 4, 'experience': 4, 'appreciate': 4, 'generation': 4, 'information': 4,
-                    'education': 4, 'situation': 4, 'organization': 5, 'conversation': 4, 'opportunity': 5, 'community': 4, 'reality': 4,
-                    'personality': 5, 'application': 4, 'particular': 4, 'especially': 4, 'relationship': 4, 'possibility': 5, 'immediately': 5,
-                    
-                    // Five+ syllable words
-                    'university': 5, 'absolutely': 4, 'definitely': 4, 'originally': 5, 'automatically': 6, 'unfortunately': 5, 'organization': 5,
-                    'anniversary': 5, 'extraordinary': 6, 'responsibility': 6
+                    'comfortable': 4, 'vegetable': 4, 'incredible': 4, 'experience': 4, 'generation': 4, 'information': 4, 'education': 4
                 };
                 
+                let syllables = 0;
                 if (specialCases[word]) {
                     syllables = specialCases[word];
                 } else {
-                    // Count vowel groups as potential syllables
                     let vowelGroups = word.match(/[aeiouy]+/g);
                     syllables = vowelGroups ? vowelGroups.length : 1;
                     
-                    // Subtract silent 'e' at the end (but not for words ending in 'le', 'se', 'ze', etc.)
-                    if (word.endsWith('e') && word.length > 2) {
-                        // Don't subtract for common endings that pronounce the 'e'
-                        if (!word.match(/(le|se|ze|re|te|de|ce|ge|ne|me|pe|ve|we|ye)$/)) {
-                            if (syllables > 1) syllables--;
-                        }
+                    if (word.endsWith('e') && word.length > 2 && !word.match(/(le|se|ze|re|te|de|ce|ge|ne|me|pe|ve|we|ye)$/)) {
+                        if (syllables > 1) syllables--;
                     }
                     
-                    // Handle -ed endings (usually silent unless after 't' or 'd')
                     if (word.endsWith('ed') && word.length > 2) {
                         const beforeEd = word.slice(-3, -2);
                         if (beforeEd !== 't' && beforeEd !== 'd' && syllables > 1) {
@@ -705,30 +744,10 @@
                         }
                     }
                     
-                    // Common vowel combinations that are one syllable
-                    const diphthongs = ['ai', 'ay', 'ea', 'ee', 'ei', 'ey', 'ie', 'oa', 'oe', 'oo', 'ou', 'ow', 'ue', 'ui', 'au', 'ew'];
-                    for (let diphthong of diphthongs) {
-                        const regex = new RegExp(diphthong, 'g');
-                        const matches = (word.match(regex) || []).length;
-                        if (matches > 0 && vowelGroups && vowelGroups.length > 1) {
-                            // Each diphthong reduces the count by 1 (since it was counted as 2 vowel groups)
-                            syllables = Math.max(1, syllables - matches);
-                        }
-                    }
-                    
-                    // Handle -tion, -sion endings (these are typically 1 syllable, not 2)
                     if (word.match(/(tion|sion)$/)) {
                         syllables = Math.max(1, syllables - 1);
                     }
                     
-                    // Handle -ly endings
-                    if (word.endsWith('ly') && word.length > 2) {
-                        // Most -ly endings don't add a syllable
-                        const baseSyllables = estimateSyllablesForBase(word.slice(0, -2));
-                        syllables = baseSyllables;
-                    }
-                    
-                    // Ensure minimum of 1 syllable
                     syllables = Math.max(1, syllables);
                 }
                 
@@ -736,18 +755,6 @@
             }
             
             return totalSyllables;
-        }
-        
-        function estimateSyllablesForBase(word) {
-            // Helper function for base words (without suffixes)
-            let vowelGroups = word.match(/[aeiouy]+/g);
-            let syllables = vowelGroups ? vowelGroups.length : 1;
-            
-            if (word.endsWith('e') && word.length > 2 && syllables > 1) {
-                syllables--;
-            }
-            
-            return Math.max(1, syllables);
         }
 
         function submitLine() {
@@ -773,48 +780,6 @@
             });
         }
 
-        function checkForImageUpdates() {
-            const checkInterval = setInterval(() => {
-                fetch(API_BASE + '/api/rooms/' + currentRoom.code)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.room && data.room.imageUrl) {
-                        currentRoom = data.room;
-                        document.getElementById('ai-image').src = currentRoom.imageUrl;
-                        document.getElementById('ai-image-container').classList.remove('hidden');
-                        document.getElementById('image-loading').classList.add('hidden');
-                        clearInterval(checkInterval);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error checking for image updates:', error);
-                });
-            }, 3000);
-            
-            setTimeout(() => {
-                clearInterval(checkInterval);
-                document.getElementById('image-loading').classList.add('hidden');
-            }, 120000);
-        }
-
-        function startRoomLoop() {
-            setInterval(() => {
-                if (!currentRoom || currentRoom.lines.length === 3) return;
-                
-                fetch(API_BASE + '/api/rooms/' + currentRoom.code)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.room && JSON.stringify(data.room) !== JSON.stringify(currentRoom)) {
-                        currentRoom = data.room;
-                        updateRoomState();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error in room loop:', error);
-                });
-            }, 5000);
-        }
-
         function shareRoomCode() {
             const roomCode = currentRoom.code;
             const shareUrl = window.location.origin + window.location.pathname + '?room=' + roomCode;
@@ -838,7 +803,8 @@
         }
 
         function shareHaiku() {
-            const haiku = currentRoom.lines.map(l => l.line).join('\n');
+            const sortedLines = currentRoom.lines.sort((a, b) => a.participantId - b.participantId);
+            const haiku = sortedLines.map(l => l.line).join('\n');
             const imageUrl = currentRoom.imageUrl;
             
             if (navigator.share) {
