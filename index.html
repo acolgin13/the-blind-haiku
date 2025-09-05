@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Haiku Together</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            color: #4a5568;
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+            font-weight: 300;
+        }
+
+        .subtitle {
+            color: #718096;
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        select, input, button {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 1rem;
+            transition: transform 0.2s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .haiku-display {
+            background: #f7fafc;
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .haiku-line {
+            font-size: 1.2rem;
+            margin: 0.5rem 0;
+            color: #2d3748;
+        }
+
+        .waiting-info {
+            background: #fff5f5;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            border: 1px solid #fed7d7;
+        }
+
+        .share-link {
+            background: #f0fff4;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            border: 1px solid #c6f6d5;
+            word-break: break-all;
+            font-family: monospace;
+        }
+
+        .player-status {
+            display: flex;
+            justify-content: space-between;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #edf2f7;
+            border-radius: 10px;
+        }
+
+        .player {
+            text-align: center;
+            flex: 1;
+        }
+
+        .player.completed {
+            color: #38a169;
+            font-weight: bold;
+        }
+
+        .player.current {
+            color: #3182ce;
+            font-weight: bold;
+        }
+
+        .syllable-counter {
+            float: right;
+            color: #718096;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Home Screen -->
+        <div id="home-screen">
+            <h1>🌸 The Blind Haiku</h1>
+            <p class="subtitle">A red chicken production</p>
+            
+            <div class="form-group">
+                <label for="syllable-format">Haiku Format:</label>
+                <select id="syllable-format">
+                    <option value="5-7-5">Traditional (5-7-5 syllables)</option>
+                    <option value="3-5-3">Short (3-5-3 syllables)</option>
+                </select>
+            </div>
+
+            <button onclick="createHaiku()">Start New Haiku</button>
+            <button onclick="showJoinForm()">Join Existing Haiku</button>
+        </div>
+
+        <!-- Join Form -->
+        <div id="join-screen" class="hidden">
+            <h2>Join Haiku Session</h2>
+            <div class="form-group">
+                <label for="session-id">Session ID:</label>
+                <input type="text" id="session-id" placeholder="Enter session ID from link">
+            </div>
+            <button onclick="joinHaiku()">Join Session</button>
+            <button onclick="showHome()">Back</button>
+        </div>
+
+        <!-- Waiting/Playing Screen -->
+        <div id="game-screen" class="hidden">
+            <h2>Haiku Session</h2>
+            
+            <div class="player-status">
+                <div class="player" id="player1">Player 1</div>
+                <div class="player" id="player2">Player 2</div>
+                <div class="player" id="player3">Player 3</div>
+            </div>
+
+            <div id="share-section">
+                <h3>Share this link with your friends:</h3>
+                <div class="share-link" id="share-link"></div>
+                <button onclick="copyLink()">Copy Link</button>
+            </div>
+
+            <div id="waiting-section" class="waiting-info">
+                <p>Waiting for your turn...</p>
+                <p id="waiting-message">Players are joining...</p>
+            </div>
+
+            <div id="writing-section" class="hidden">
+                <h3 id="line-prompt">Write your line:</h3>
+                <div class="form-group">
+                    <label for="haiku-line">
+                        Line <span id="line-number">1</span> 
+                        (<span id="expected-syllables">5</span> syllables)
+                        <span class="syllable-counter" id="syllable-count">0 syllables</span>
+                    </label>
+                    <input type="text" id="haiku-line" placeholder="Enter your line..." oninput="countSyllables()">
+                </div>
+                <button onclick="submitLine()" id="submit-btn" disabled>Submit Line</button>
+            </div>
+
+            <div id="haiku-result" class="hidden">
+                <h3>Your Collaborative Haiku:</h3>
+                <div class="haiku-display">
+                    <div class="haiku-line" id="line1"></div>
+                    <div class="haiku-line" id="line2"></div>
+                    <div class="haiku-line" id="line3"></div>
+                </div>
+                <button onclick="generateImage()">Generate AI Image</button>
+                <button onclick="createNewHaiku()">Create Another</button>
+                <button onclick="shareHaiku()">Share Haiku</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentSession = null;
+        let playerNumber = null;
+        let syllableFormat = '5-7-5';
+        const syllableCounts = {
+            '5-7-5': [5, 7, 5],
+            '3-5-3': [3, 5, 3]
+        };
+
+        // Check if joining from URL
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session');
+            if (sessionId) {
+                document.getElementById('session-id').value = sessionId;
+                showJoinForm();
+            }
+        };
+
+        function showHome() {
+            document.getElementById('home-screen').classList.remove('hidden');
+            document.getElementById('join-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.add('hidden');
+        }
+
+        function showJoinForm() {
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('join-screen').classList.remove('hidden');
+            document.getElementById('game-screen').classList.add('hidden');
+        }
+
+        function createHaiku() {
+            syllableFormat = document.getElementById('syllable-format').value;
+            const sessionId = generateSessionId();
+            currentSession = {
+                id: sessionId,
+                format: syllableFormat,
+                players: [],
+                lines: [],
+                currentPlayer: 1
+            };
+            
+            // Simulate API call to create session
+            localStorage.setItem('haiku_' + sessionId, JSON.stringify(currentSession));
+            
+            joinSession(sessionId, 1);
+        }
+
+        function joinHaiku() {
+            const sessionId = document.getElementById('session-id').value.trim();
+            if (!sessionId) {
+                alert('Please enter a session ID');
+                return;
+            }
+            
+            // Simulate API call to join session
+            const sessionData = localStorage.getItem('haiku_' + sessionId);
+            if (!sessionData) {
+                alert('Session not found');
+                return;
+            }
+            
+            currentSession = JSON.parse(sessionData);
+            const playerNum = currentSession.players.length + 1;
+            
+            if (playerNum > 3) {
+                alert('This session is full');
+                return;
+            }
+            
+            joinSession(sessionId, playerNum);
+        }
+
+        function joinSession(sessionId, playerNum) {
+            playerNumber = playerNum;
+            currentSession.players.push(playerNum);
+            
+            // Update session in storage
+            localStorage.setItem('haiku_' + sessionId, JSON.stringify(currentSession));
+            
+            // Show game screen
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('join-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            
+            // Set up share link
+            const shareUrl = `${window.location.origin}${window.location.pathname}?session=${sessionId}`;
+            document.getElementById('share-link').textContent = shareUrl;
+            
+            updateGameState();
+            startGameLoop();
+        }
+
+        function updateGameState() {
+            // Update player status
+            for (let i = 1; i <= 3; i++) {
+                const playerEl = document.getElementById(`player${i}`);
+                if (currentSession.players.includes(i)) {
+                    if (currentSession.lines[i-1]) {
+                        playerEl.classList.add('completed');
+                        playerEl.classList.remove('current');
+                        playerEl.textContent = `Player ${i} ✓`;
+                    } else if (i === currentSession.currentPlayer) {
+                        playerEl.classList.add('current');
+                        playerEl.classList.remove('completed');
+                        playerEl.textContent = `Player ${i} (writing...)`;
+                    } else {
+                        playerEl.classList.remove('completed', 'current');
+                        playerEl.textContent = `Player ${i}`;
+                    }
+                } else {
+                    playerEl.classList.remove('completed', 'current');
+                    playerEl.textContent = `Player ${i} (waiting to join)`;
+                }
+            }
+
+            // Show appropriate section
+            if (currentSession.lines.length === 3) {
+                showCompletedHaiku();
+            } else if (playerNumber === currentSession.currentPlayer) {
+                showWritingSection();
+            } else {
+                showWaitingSection();
+            }
+        }
+
+        function showWaitingSection() {
+            document.getElementById('waiting-section').classList.remove('hidden');
+            document.getElementById('writing-section').classList.add('hidden');
+            document.getElementById('haiku-result').classList.add('hidden');
+            
+            const playersJoined = currentSession.players.length;
+            const linesWritten = currentSession.lines.length;
+            
+            let message;
+            if (playersJoined < 3) {
+                message = `Waiting for ${3 - playersJoined} more player(s) to join...`;
+            } else if (linesWritten < playerNumber - 1) {
+                message = `Waiting for player ${currentSession.currentPlayer} to write their line...`;
+            } else {
+                message = "Waiting for your turn...";
+            }
+            
+            document.getElementById('waiting-message').textContent = message;
+        }
+
+        function showWritingSection() {
+            document.getElementById('waiting-section').classList.add('hidden');
+            document.getElementById('writing-section').classList.remove('hidden');
+            document.getElementById('haiku-result').classList.add('hidden');
+            
+            const lineNum = currentSession.lines.length + 1;
+            const expectedSyllables = syllableCounts[currentSession.format][lineNum - 1];
+            
+            document.getElementById('line-number').textContent = lineNum;
+            document.getElementById('expected-syllables').textContent = expectedSyllables;
+            document.getElementById('haiku-line').value = '';
+            countSyllables();
+        }
+
+        function showCompletedHaiku() {
+            document.getElementById('waiting-section').classList.add('hidden');
+            document.getElementById('writing-section').classList.add('hidden');
+            document.getElementById('haiku-result').classList.remove('hidden');
+            document.getElementById('share-section').classList.add('hidden');
+            
+            // Display the haiku
+            for (let i = 0; i < 3; i++) {
+                document.getElementById(`line${i + 1}`).textContent = currentSession.lines[i];
+            }
+        }
+
+        function countSyllables() {
+            const text = document.getElementById('haiku-line').value;
+            const syllables = estimateSyllables(text);
+            document.getElementById('syllable-count').textContent = `${syllables} syllables`;
+            
+            const lineNum = currentSession.lines.length + 1;
+            const expectedSyllables = syllableCounts[currentSession.format][lineNum - 1];
+            const submitBtn = document.getElementById('submit-btn');
+            
+            submitBtn.disabled = syllables !== expectedSyllables || text.trim() === '';
+        }
+
+        function estimateSyllables(word) {
+            if (!word || word.trim() === '') return 0;
+            
+            word = word.toLowerCase().trim();
+            if (word.length <= 3) return 1;
+            
+            // Remove trailing 'e'
+            word = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '');
+            word = word.replace(/^y/, '');
+            
+            // Count vowel groups
+            const matches = word.match(/[aeiouy]{1,2}/g);
+            return matches ? matches.length : 1;
+        }
+
+        function submitLine() {
+            const line = document.getElementById('haiku-line').value.trim();
+            currentSession.lines.push(line);
+            currentSession.currentPlayer++;
+            
+            // Update session in storage
+            localStorage.setItem('haiku_' + currentSession.id, JSON.stringify(currentSession));
+            
+            updateGameState();
+        }
+
+        function generateSessionId() {
+            return Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
+
+        function copyLink() {
+            const link = document.getElementById('share-link').textContent;
+            navigator.clipboard.writeText(link).then(() => {
+                alert('Link copied to clipboard!');
+            });
+        }
+
+        function generateImage() {
+            alert('AI image generation would happen here (requires backend integration)');
+        }
+
+        function createNewHaiku() {
+            showHome();
+        }
+
+        function shareHaiku() {
+            const haiku = currentSession.lines.join('\n');
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Our Collaborative Haiku',
+                    text: haiku
+                });
+            } else {
+                navigator.clipboard.writeText(haiku).then(() => {
+                    alert('Haiku copied to clipboard!');
+                });
+            }
+        }
+
+        function startGameLoop() {
+            // Simulate checking for updates every 15 seconds
+            setInterval(() => {
+                // In real app, this would fetch from API
+                const sessionData = localStorage.getItem('haiku_' + currentSession.id);
+                if (sessionData) {
+                    const updatedSession = JSON.parse(sessionData);
+                    if (JSON.stringify(updatedSession) !== JSON.stringify(currentSession)) {
+                        currentSession = updatedSession;
+                        updateGameState();
+                    }
+                }
+            }, 15000);
+        }
+    </script>
+</body>
+</html>
