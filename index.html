@@ -405,25 +405,7 @@
             });
         });
 
-        function rejoinRoom(roomCode) {
-            fetch(API_BASE + '/api/rooms/' + roomCode)
-            .then(response => response.json())
-            .then(data => {
-                if (data.room) {
-                    currentRoom = data.room;
-                    participantId = parseInt(localStorage.getItem('participantId'));
-                    setupRoom(roomCode);
-                } else {
-                    localStorage.removeItem('currentRoomCode');
-                    localStorage.removeItem('participantId');
-                }
-            })
-            .catch(error => {
-                console.error('Error rejoining room:', error);
-                localStorage.removeItem('currentRoomCode');
-                localStorage.removeItem('participantId');
-            });
-        }
+// Remove the rejoinRoom function since we no longer need it
 
         function updateArtStylePreview() {
             const style = document.getElementById('art-style').value;
