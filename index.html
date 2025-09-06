@@ -693,50 +693,54 @@
                 word = word.replace(/[.,!?;:"'()-]/g, '');
                 if (word.length === 0) continue;
                 
-                const specialCases = {
-                    'the': 1, 'a': 1, 'an': 1, 'and': 1, 'or': 1, 'but': 1, 'in': 1, 'on': 1, 'at': 1, 'to': 1, 'for': 1, 'of': 1, 'with': 1, 'by': 1,
-                    'through': 1, 'does': 1, 'goes': 1, 'comes': 1, 'some': 1, 'love': 1, 'above': 1, 'move': 1, 'prove': 1, 'live': 1, 'give': 1,
-                    'fire': 2, 'hour': 2, 'power': 2, 'flower': 2, 'tower': 2, 'shower': 2, 'water': 2, 'better': 2, 'letter': 2, 'matter': 2,
-                    'orange': 2, 'purple': 2, 'circle': 2, 'simple': 2, 'table': 2, 'apple': 2, 'bottle': 2, 'middle': 2, 'single': 2,
-                    'mountain': 2, 'fountain': 2, 'certain': 2, 'curtain': 2, 'captain': 2, 'listen': 2, 'often': 2, 'butter': 2, 'summer': 2,
-                    'ocean': 2, 'nation': 2, 'station': 2, 'action': 2, 'question': 2, 'mention': 2, 'winter': 2, 'sister': 2, 'mister': 2,
-                    'thoughtless': 2, 'business': 2, 'into': 2, 'upon': 2, 'about': 2, 'around': 2, 'never': 2, 'ever': 2, 'over': 2, 'under': 2,
-                    'being': 2, 'going': 2, 'doing': 2, 'seeing': 2, 'feeling': 2, 'nothing': 2, 'something': 2, 'little': 2, 'people': 2,
-                    'everything': 3, 'attention': 3, 'intention': 3, 'beautiful': 3, 'different': 3, 'general': 3, 'several': 3, 'interest': 3,
-                    'memory': 3, 'favorite': 3, 'every': 3, 'family': 3, 'camera': 3, 'serious': 3, 'curious': 3, 'obvious': 3, 'previous': 3,
-                    'various': 3, 'terrible': 3, 'possible': 3, 'horrible': 3, 'company': 3, 'another': 3, 'together': 3, 'however': 3,
-                    'comfortable': 4, 'vegetable': 4, 'incredible': 4, 'experience': 4, 'generation': 4, 'information': 4, 'education': 4
-                };
-                
-                let syllables = 0;
-                if (specialCases[word]) {
-                    syllables = specialCases[word];
-                } else {
-                    let vowelGroups = word.match(/[aeiouy]+/g);
-                    syllables = vowelGroups ? vowelGroups.length : 1;
-                    
-                    if (word.endsWith('e') && word.length > 2 && !word.match(/(le|se|ze|re|te|de|ce|ge|ne|me|pe|ve|we|ye)$/)) {
-                        if (syllables > 1) syllables--;
-                    }
-                    
-                    if (word.endsWith('ed') && word.length > 2) {
-                        const beforeEd = word.slice(-3, -2);
-                        if (beforeEd !== 't' && beforeEd !== 'd' && syllables > 1) {
-                            syllables--;
-                        }
-                    }
-                    
-                    if (word.match(/(tion|sion)$/)) {
-                        syllables = Math.max(1, syllables - 1);
-                    }
-                    
-                    syllables = Math.max(1, syllables);
-                }
-                
-                totalSyllables += syllables;
+                // Use a simple but accurate approach - basic vowel counting with common word exceptions
+                totalSyllables += countSyllablesInWord(word);
             }
             
             return totalSyllables;
+        }
+        
+        function countSyllablesInWord(word) {
+            if (word.length === 0) return 0;
+            if (word.length === 1) return 1;
+            
+            // Check common words first (most accurate)
+            const knownWords = {
+                // 1 syllable
+                'a': 1, 'an': 1, 'and': 1, 'are': 1, 'as': 1, 'at': 1, 'be': 1, 'by': 1, 'for': 1, 'from': 1, 'have': 1, 'he': 1, 'in': 1, 'is': 1, 'it': 1, 'of': 1, 'on': 1, 'that': 1, 'the': 1, 'to': 1, 'was': 1, 'will': 1, 'with': 1, 'you': 1,
+                'but': 1, 'not': 1, 'all': 1, 'can': 1, 'had': 1, 'her': 1, 'his': 1, 'how': 1, 'man': 1, 'new': 1, 'now': 1, 'old': 1, 'see': 1, 'two': 1, 'way': 1, 'who': 1, 'boy': 1, 'did': 1, 'get': 1, 'has': 1, 'him': 1, 'let': 1, 'may': 1, 'put': 1, 'say': 1, 'she': 1, 'too': 1, 'use': 1,
+                'through': 1, 'does': 1, 'goes': 1, 'comes': 1, 'some': 1, 'love': 1, 'above': 1, 'move': 1, 'prove': 1, 'live': 1, 'give': 1, 'have': 1, 'made': 1, 'here': 1, 'there': 1, 'where': 1, 'care': 1, 'share': 1, 'rare': 1, 'bare': 1,
+                'one': 1, 'once': 1, 'done': 1, 'gone': 1, 'none': 1, 'come': 1, 'home': 1, 'time': 1, 'make': 1, 'take': 1, 'quite': 1, 'white': 1, 'write': 1, 'while': 1, 'smile': 1, 'style': 1, 'whole': 1, 'close': 1, 'those': 1, 'chose': 1,
+                'yes': 1, 'this': 1, 'work': 1, 'let': 1, 'blood': 1, 'sand': 1, 'glass': 1,
+                
+                // 2 syllables  
+                'about': 2, 'after': 2, 'again': 2, 'against': 2, 'also': 2, 'among': 2, 'any': 2, 'around': 2, 'away': 2, 'back': 2, 'because': 2, 'before': 2, 'being': 2, 'between': 2, 'both': 2, 'came': 1, 'could': 1, 'during': 2, 'each': 1, 'even': 2, 'every': 2, 'going': 2, 'good': 1, 'great': 1, 'group': 1, 'hand': 1, 'head': 1, 'help': 1, 'high': 1, 'house': 1, 'just': 1, 'know': 1, 'large': 1, 'last': 1, 'left': 1, 'life': 1, 'little': 2, 'long': 1, 'made': 1, 'make': 1, 'many': 2, 'most': 1, 'move': 1, 'much': 1, 'never': 2, 'next': 1, 'night': 1, 'number': 2, 'often': 2, 'only': 2, 'other': 2, 'over': 2, 'own': 1, 'part': 1, 'people': 2, 'place': 1, 'point': 1, 'public': 2, 'right': 1, 'same': 1, 'school': 1, 'seem': 1, 'several': 3, 'should': 1, 'since': 1, 'small': 1, 'state': 1, 'still': 1, 'such': 1, 'system': 2, 'take': 1, 'than': 1, 'their': 1, 'them': 1, 'these': 1, 'they': 1, 'think': 1, 'this': 1, 'three': 1, 'through': 1, 'under': 2, 'until': 2, 'very': 2, 'water': 2, 'well': 1, 'were': 1, 'what': 1, 'when': 1, 'which': 1, 'while': 1, 'world': 1, 'would': 1, 'year': 1, 'young': 1,
+                'baby': 2, 'jesus': 2, 'city': 2, 'family': 3, 'party': 2, 'money': 2, 'story': 2, 'sorry': 2, 'happy': 2, 'maybe': 2, 'ready': 2, 'easy': 2, 'busy': 2, 'crazy': 2, 'pretty': 2, 'funny': 2, 'sunny': 2, 'windy': 2, 'cloudy': 2, 'rainy': 2, 'snowy': 2,
+                'better': 2, 'letter': 2, 'matter': 2, 'butter': 2, 'summer': 2, 'winter': 2, 'sister': 2, 'mister': 2, 'center': 2, 'corner': 2, 'mother': 2, 'father': 2, 'brother': 2, 'teacher': 2, 'player': 2, 'singer': 2, 'writer': 2, 'driver': 2,
+                'fire': 2, 'hour': 2, 'power': 2, 'flower': 2, 'tower': 2, 'shower': 2, 'orange': 2, 'purple': 2, 'circle': 2, 'simple': 2, 'table': 2, 'apple': 2, 'bottle': 2, 'middle': 2, 'single': 2, 'mountain': 2, 'fountain': 2, 'certain': 2, 'curtain': 2, 'captain': 2, 'listen': 2,
+                'ocean': 2, 'nation': 2, 'station': 2, 'action': 2, 'question': 2, 'mention': 2, 'thoughtless': 2, 'business': 2, 'into': 2, 'upon': 2, 'around': 2, 'never': 2, 'ever': 2, 'over': 2, 'under': 2, 'feeling': 2, 'nothing': 2, 'something': 2, 'someone': 2, 'today': 2, 'tonight': 2, 'away': 2,
+                
+                // 3 syllables
+                'everything': 3, 'everyone': 3, 'attention': 3, 'intention': 3, 'beautiful': 3, 'different': 3, 'general': 3, 'several': 3, 'interest': 3, 'memory': 3, 'favorite': 3, 'camera': 3, 'serious': 3, 'curious': 3, 'obvious': 3, 'previous': 3, 'various': 3, 'terrible': 3, 'possible': 3, 'horrible': 3, 'company': 3, 'another': 3, 'together': 3, 'however': 3, 'remember': 3, 'consider': 3, 'imagine': 3, 'important': 3, 'energy': 3, 'continue': 3, 'probably': 3, 'already': 3, 'creating': 3, 'material': 3, 'natural': 3, 'suddenly': 3, 'certainly': 3, 'quietly': 3, 'carefully': 3, 'recently': 3, 'devotion': 3,
+                
+                // 4+ syllables
+                'comfortable': 4, 'vegetable': 4, 'incredible': 4, 'experience': 4, 'generation': 4, 'information': 4, 'education': 4, 'situation': 4, 'organization': 5, 'conversation': 4, 'opportunity': 5, 'community': 4, 'reality': 4, 'personality': 5, 'application': 4, 'particular': 4, 'especially': 4, 'relationship': 4, 'possibility': 5, 'immediately': 5, 'university': 5, 'absolutely': 4, 'definitely': 4, 'originally': 5, 'automatically': 6, 'unfortunately': 5, 'anniversary': 5, 'extraordinary': 6, 'responsibility': 6
+            };
+            
+            if (knownWords[word]) {
+                return knownWords[word];
+            }
+            
+            // Fallback: simple vowel counting for unknown words
+            let syllables = (word.match(/[aeiouy]+/g) || []).length;
+            
+            // Adjust for silent 'e'
+            if (word.endsWith('e') && syllables > 1) {
+                syllables--;
+            }
+            
+            // Ensure at least 1 syllable
+            return Math.max(1, syllables);
         }
 
         function submitLine() {
